@@ -122,7 +122,7 @@ def main():
     fig.canvas.set_window_title('Guitar Tuner')
 
     # frequencies (x-axis labels)
-    freqs = numpy.fft.fftfreq(CHUNK, 1./RATE)[:(CHUNK / 2)]
+    freqs = numpy.fft.fftfreq(CHUNK, 1./RATE)[:(CHUNK // 2)]
 
     print "* recording"
     # accumulate frequencies and data
