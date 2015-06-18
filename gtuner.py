@@ -86,7 +86,7 @@ def fourier_response(samples, freq):
     frequency.
     '''
     return abs(numpy.exp(
-            numpy.array(range(samples.size)) *
+            numpy.arange(samples.size) *
             freq * -2j * numpy.pi / RATE).dot(samples).real)
 
 def narrowband_responses(frame, narrowband_freqs):
