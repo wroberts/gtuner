@@ -14,6 +14,17 @@ import numpy
 import pyaudio
 import sys
 
+def make_harmonic_matrix(size, low_cutoff = 5):
+    '''sum harmonics with this fast and easy harmonic matrix!'''
+    if low_cutoff < 1:
+        low_cutoff = 1
+    row_pattern = numpy.exp2(numpy.arange(0, -size, -1))
+    m = numpy.zeros((size, size))
+    for i in range(low_cutoff, size):
+        #print('row i = {}, shape = {} guess {}'.format(i, m[i, i::i].shape, (size-i-1)//i+1))
+        m[i, i::i] = row_pattern[:(size-i-1)//i+1]
+    return m
+
 # chunks of 512 samples gives a frequency resolution of about 80 Hz;
 # 1024 gives 40 Hz; 2048 gives about 20 Hz
 CHUNK      = 2048
@@ -47,6 +58,8 @@ EXPANDED_STRING_VALUES = sorted(set(
 MIN_BETWEEN_STRING_DIST = min(abs(
     (numpy.append([0],numpy.log(EXPANDED_STRING_VALUES)) -
      numpy.append(numpy.log(EXPANDED_STRING_VALUES),[0]))[1:-1])) / 2.
+
+HARMONIC_MATRIX = make_harmonic_matrix(CHUNK // 2)
 
 def find_tuning(freq):
     '''
@@ -156,7 +169,9 @@ def main():
             if i > 0 and i % int(round(RATE / CHUNK * DISPLAY_UPDATE)) == 0:
                 plt.clf()
                 # choose the main frequency
-                main_freq = freqs[numpy.argmax(cum)]
+                # main_freq = freqs[numpy.argmax(cum)]
+                # 19 jun 2015: we should also consider all the harmonics
+                main_freq = freqs[numpy.argmax(HARMONIC_MATRIX.dot(cum))]
                 # find the string which best fits the main frequency
                 string, string_freq = find_tuning(main_freq)
                 # show the narrowband frequency analysis
