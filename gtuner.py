@@ -59,7 +59,7 @@ MIN_BETWEEN_STRING_DIST = min(abs(
     (numpy.append([0],numpy.log(EXPANDED_STRING_VALUES)) -
      numpy.append(numpy.log(EXPANDED_STRING_VALUES),[0]))[1:-1])) / 2.
 
-HARMONIC_MATRIX = make_harmonic_matrix(CHUNK // 2)
+HARMONIC_MATRIX = make_harmonic_matrix(CHUNK // 2, 2)
 
 def find_tuning(freq):
     '''
