@@ -214,6 +214,7 @@ def main():
                 freq_axes.get_yaxis().set_ticks([]) # remove y ticks
                 plt.plot(freqs, cum)
                 plt.draw()
+                plt.pause(0.01)
                 # reset accumulators
                 cum = numpy.zeros(len(freqs))
                 frame = numpy.array([], dtype=numpy.int16)
