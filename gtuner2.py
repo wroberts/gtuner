@@ -313,6 +313,26 @@ def find_target_freq(main_freq, closest_string):
                              numpy.round(logfreq_std_string - logfreq_main_freq))
     return target_freq
 
+def find_closest_string(relevant_str_base_logfreqs, main_freq):
+    '''
+    Find the closest string to the note we've identified
+    (closest_note).
+
+    Arguments:
+    - `relevant_str_base_logfreqs`:
+    - `main_freq`:
+    '''
+    # put main_freq into octave 4 (between find_freq('C4') and find_freq('C5'))
+    # we work in log space
+    # numpy.log2(find_freq('C4')) = 8.03
+    # numpy.log2(find_freq('C5')) = 9.03
+    # numpy.log2(main_freq) = 10.001
+    logfreq_c4 = numpy.log2(find_freq('C4'))
+    rel_str_freq = (numpy.log2(main_freq) - logfreq_c4) % 1 + logfreq_c4
+    closest_string = min([((rel_str_freq - y) ** 2, x) for (x, y) in
+                          relevant_str_base_logfreqs])[1]
+    return closest_string
+
 def main():
     '''
     Main program.  A guitar tuner running inside matplotlib.
@@ -397,19 +417,11 @@ def main():
 
                 # calculate the current sound power
                 rms_power = numpy.sqrt((freqs ** 2).mean())
+
                 # find the closest string to the note we've identified
                 # (closest_note)
-
-                # put est_max_freq into octave 4 (between find_freq('C4') and find_freq('C5'))
-                # we work in log space
-                # numpy.log2(find_freq('C4')) = 8.03
-                # numpy.log2(find_freq('C5')) = 9.03
-                # numpy.log2(est_max_freq) = 10.001
-                rel_str_freq = ((numpy.log2(est_max_freq) - numpy.log2(find_freq('C4'))) % 1 +
-                                numpy.log2(find_freq('C4')))
-                closest_string = min([((rel_str_freq-y)**2, x) for (x, y) in
-                                      relevant_str_base_logfreqs])[1]
-
+                closest_string = find_closest_string(relevant_str_base_logfreqs, est_max_freq)
+                # find the frequency that the string should be
                 target_freq = find_target_freq(est_max_freq, closest_string)
 
                 # compute the sideband energies
