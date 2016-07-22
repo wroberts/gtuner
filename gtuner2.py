@@ -110,6 +110,8 @@ SEMITONES_TO_NOTES = dict((y,x) for (x,y) in NOTES_TO_SEMITONES.items()
 
 STANDARD_TUNING = ['E2', 'A2', 'D3', 'G3', 'B3', 'E4']
 
+NOTE_STRING_REGEX = re.compile(r'(?P<letter>[A-Za-z#]{1,2})(?P<octave>-?[0-9]{1,2})')
+
 def interpret_note(note):
     '''
     Interprets a note representation by breaking it into its
@@ -124,7 +126,7 @@ def interpret_note(note):
     - `note`:
     '''
     # interpret the note string
-    match = re.match(r'(?P<letter>[A-Za-z#]{1,2})(?P<octave>-?[0-9]{1,2})', note)
+    match = NOTE_STRING_REGEX.match(note)
     if not match:
         raise Exception('Could not interpret note "{}"'.format(note))
     letter = match.group('letter')
