@@ -21,6 +21,7 @@ https://arxiv.org/pdf/0912.0745.pdf
 http://blog.bjornroche.com/2012/07/frequency-detection-using-fft-aka-pitch.html
 '''
 
+import itertools
 import re
 import time
 import matplotlib.pyplot as plt
@@ -31,6 +32,12 @@ import pyaudio
 # ============================================================
 #  Digital Signal Processing
 # ============================================================
+
+def pairwise(iterable):
+    "s -> (s0,s1), (s1,s2), (s2, s3), ..."
+    a, b = itertools.tee(iterable)
+    next(b, None)
+    return itertools.izip(a, b)
 
 def parabolic(f, x):
     """Quadratic interpolation for estimating the true position of an
@@ -228,12 +235,15 @@ FREQ_RESOLUTION = 0.5 # Hz
 # frequencies with sufficient accuracy.
 MIN_TAPE_LENGTH = int(SAMPLE_RATE / FREQ_RESOLUTION)
 
+TAPE_COORDINATES = numpy.arange(MIN_TAPE_LENGTH)
+
 # we want to update the screen twice a second
 SCREEN_UPDATE_DELAY = 0.5 # s
 
 # pre-calculate a matrix to allow summing harmonics
 # this one uses the base frequency, plus harmonics 2, 3, and 4
-HARMONIC_MATRIX = build_harmonic_matrix(MIN_TAPE_LENGTH // 2 + 1, 3)
+NUM_HARMONICS = 3
+HARMONIC_MATRIX = build_harmonic_matrix(MIN_TAPE_LENGTH // 2 + 1, NUM_HARMONICS)
 
 # pre-calculate the hamming window
 HAMMING_WINDOW = numpy.hamming(MIN_TAPE_LENGTH)
@@ -253,6 +263,21 @@ RMS_RANGES = (('g', 0, 1.0),
               ('y', 1.0, 10.),
               ('r', 10., 20.))
 
+NUM_SIDEBANDS = 9
+
+def sideband_energies(samples, target_freq, log_sideband_width, num_sidebands, num_harmonics):
+    sideband_logfreqs = log_sideband_width * numpy.arange(1, 1 + num_sidebands) / float(num_sidebands)
+    lower_sidebands = numpy.exp2(numpy.log2(target_freq) - numpy.array(list(reversed(sideband_logfreqs))))
+    upper_sidebands = numpy.exp2(numpy.log2(target_freq) + sideband_logfreqs)
+    sidebands = numpy.concatenate((lower_sidebands, [target_freq], upper_sidebands))
+    # compute the fourier series for each of the sidebands
+    fourier = numpy.exp(numpy.outer(sidebands, TAPE_COORDINATES) * -2j * numpy.pi / SAMPLE_RATE)
+    if num_harmonics < 0:
+        num_harmonics = 0
+    for harm in range(2, 2 + num_harmonics):
+        fourier += numpy.exp(numpy.outer(sidebands * harm, TAPE_COORDINATES) * -2j * numpy.pi / SAMPLE_RATE)
+    return numpy.abs(fourier.dot(samples).real)
+
 def main():
 
     # Step 1: program set up: open audio device, set up variables,
@@ -271,6 +296,13 @@ def main():
     # tuning, all on octave 4
     relevant_str_base_logfreqs = [(x, numpy.log2(find_freq('{}4'.format(x))))
                                   for x in relevant_strings]
+    # find the minimum distance between relevant strings in log
+    # frequency space
+    rel_logfreqs = numpy.array(sorted([x[1] for x in relevant_str_base_logfreqs]))
+    min_logdist = min((y-x) for (x,y) in
+                      pairwise(numpy.concatenate((rel_logfreqs - 1,
+                                                  rel_logfreqs,
+                                                  rel_logfreqs + 1))))
     plt.ion()
 
     # Step 2: loop
@@ -320,7 +352,7 @@ def main():
                 est_max_freq_idx = parabolic(abs(freqs), max_freq_idx)[0]
                 est_max_freq = SAMPLE_RATE * est_max_freq_idx / MIN_TAPE_LENGTH
                 closest_note = find_closest_note(est_max_freq)
-                print('{:.2f} Hz ({})'.format(est_max_freq, closest_note))
+                #print('{:.2f} Hz ({})'.format(est_max_freq, closest_note))
 
                 # Step 9: plot things
 
@@ -337,8 +369,35 @@ def main():
                 rel_str_freq = (numpy.log2(est_max_freq) - numpy.log2(find_freq('C4'))) % 1 + numpy.log2(find_freq('C4'))
                 closest_string = min([((rel_str_freq-y)**2, x) for (x, y) in relevant_str_base_logfreqs])[1]
 
+                # given that we think we're tuning `closest_string`,
+                # what frequency should we be aiming for?
+                target_freq = numpy.exp2(numpy.log2(find_freq('{}4'.format(closest_string))) -
+                                         numpy.round(numpy.log2(find_freq('{}4'.format(closest_string))) -
+                                                     numpy.log2(est_max_freq)))
+
+                # compute the sideband energies
+                sb_energies = sideband_energies(selected,
+                                                target_freq,
+                                                min_logdist / 2,
+                                                (NUM_SIDEBANDS - 1) // 2,
+                                                NUM_HARMONICS)
+                sb_bestidx = numpy.argmax(sb_energies)
+
                 plt.clf()
+                # sideband energies
                 plt.subplot(311)
+                plt.axis('off')
+                #plt.get_xaxis().set_ticks([]) # remove x ticks
+                #plt.get_yaxis().set_ticks([]) # remove y ticks
+                bars = plt.bar(left=numpy.arange(NUM_SIDEBANDS)+0.05,
+                               height=sb_energies,
+                               width=.9,
+                               color='k')
+                # color the most powerful narrowband specially
+                if sb_bestidx == (NUM_SIDEBANDS - 1) // 2:
+                    bars[sb_bestidx].set_facecolor('g')
+                else:
+                    bars[sb_bestidx].set_facecolor('r')
 
                 # Text and RMS power
                 plt.subplot(312)
