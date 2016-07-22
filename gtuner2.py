@@ -245,7 +245,7 @@ MAX_PLOT_FREQ = 2000 # Hz
 NUM_PLOTTED_FREQS = int(MAX_PLOT_FREQ / FREQ_RESOLUTION) + 1
 
 # the x labels of the frequencies to plot
-FREQ_PLOT_XLABELS = np.arange(NUM_PLOTTED_FREQS) * FREQ_RESOLUTION
+FREQ_PLOT_XLABELS = numpy.arange(NUM_PLOTTED_FREQS) * FREQ_RESOLUTION
 
 # these are hand-calibrated values for determining what is "loud" to
 # my microphone
@@ -321,7 +321,7 @@ def main():
                 # Step 9: plot things
 
                 # calculate the current sound power
-                rms_power = np.sqrt((freqs ** 2).mean())
+                rms_power = numpy.sqrt((freqs ** 2).mean())
                 # find the closest string to the note we've identified
                 # (closest_note)
                 closest_string = 'G4'
@@ -348,7 +348,7 @@ def main():
 
                 # Frequency spectrum
                 plt.subplot(313)
-                plt.plot(FREQ_PLOT_XLABELS, np.log(freqs[:NUM_PLOTTED_FREQS]))
+                plt.plot(FREQ_PLOT_XLABELS, numpy.log(freqs[:NUM_PLOTTED_FREQS]))
                 plt.ylabel('Power')
                 plt.xlabel('Frequency (Hz)')
                 plt.draw()
@@ -357,8 +357,6 @@ def main():
                 # Step 10: shorten the tape if needed
 
                 tape = tape[-MIN_TAPE_LENGTH:]
-
-            pass
 
     except KeyboardInterrupt:
         pass
