@@ -297,6 +297,28 @@ def sideband_energies(samples, target_freq, log_sideband_width, num_sidebands, n
                              -2j * numpy.pi / SAMPLE_RATE)
     return numpy.abs(fourier.dot(samples).real)
 
+def compute_tuning_vars(tuning):
+    '''
+    Computes several variables relevant to fixing the tuning of a
+    guitar string.
+
+    Arguments:
+    - `tuning`:
+    '''
+    relevant_strings = set([interpret_note(x)[0] for x in tuning])
+    # frequencies of the strings we're using in our
+    # tuning, all on octave 4
+    relevant_str_base_logfreqs = [(x, numpy.log2(find_freq('{}4'.format(x))))
+                                  for x in relevant_strings]
+    # find the minimum distance between relevant strings in log
+    # frequency space
+    rel_logfreqs = numpy.array(sorted([x[1] for x in relevant_str_base_logfreqs]))
+    min_logdist = min((y-x) for (x,y) in
+                      pairwise(numpy.concatenate((rel_logfreqs - 1,
+                                                  rel_logfreqs,
+                                                  rel_logfreqs + 1))))
+    return min_logdist, relevant_str_base_logfreqs
+
 def find_main_freq(freqs):
     '''
     Identifies the main frequency from the vector of frequencies `freqs`.
@@ -362,18 +384,7 @@ def main():
                         frames_per_buffer = CHUNK)
     tape = numpy.array([], dtype=numpy.float32)
     last_update_time = time.time()
-    relevant_strings = set([interpret_note(x)[0] for x in STANDARD_TUNING])
-    # frequencies of the strings we're using in our
-    # tuning, all on octave 4
-    relevant_str_base_logfreqs = [(x, numpy.log2(find_freq('{}4'.format(x))))
-                                  for x in relevant_strings]
-    # find the minimum distance between relevant strings in log
-    # frequency space
-    rel_logfreqs = numpy.array(sorted([x[1] for x in relevant_str_base_logfreqs]))
-    min_logdist = min((y-x) for (x,y) in
-                      pairwise(numpy.concatenate((rel_logfreqs - 1,
-                                                  rel_logfreqs,
-                                                  rel_logfreqs + 1))))
+    min_logdist, relevant_str_base_logfreqs = compute_tuning_vars(STANDARD_TUNING)
     plt.ion()
     plt.gcf().canvas.set_window_title('Guitar Tuner')
 
