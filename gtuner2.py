@@ -267,6 +267,10 @@ def main():
     tape = numpy.array([], dtype=numpy.float32)
     last_update_time = time.time()
     relevant_strings = set([interpret_note(x)[0] for x in STANDARD_TUNING])
+    # frequencies of the strings we're using in our
+    # tuning, all on octave 4
+    relevant_str_base_logfreqs = [(x, numpy.log2(find_freq('{}4'.format(x))))
+                                  for x in relevant_strings]
     plt.ion()
 
     # Step 2: loop
@@ -324,7 +328,14 @@ def main():
                 rms_power = numpy.sqrt((freqs ** 2).mean())
                 # find the closest string to the note we've identified
                 # (closest_note)
-                closest_string = 'G4'
+
+                # put est_max_freq into octave 4 (between find_freq('C4') and find_freq('C5'))
+                # we work in log space
+                # numpy.log2(find_freq('C4')) = 8.03
+                # numpy.log2(find_freq('C5')) = 9.03
+                # numpy.log2(est_max_freq) = 10.001
+                rel_str_freq = (numpy.log2(est_max_freq) - numpy.log2(find_freq('C4'))) % 1 + numpy.log2(find_freq('C4'))
+                closest_string = min([((rel_str_freq-y)**2, x) for (x, y) in relevant_str_base_logfreqs])[1]
 
                 plt.clf()
                 plt.subplot(311)
