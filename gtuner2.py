@@ -431,8 +431,8 @@ def main():
 
                 # Step 8: find the maximum frequency
 
-                est_max_freq, closest_note = find_main_freq(freqs)
-                #print('{:.2f} Hz ({})'.format(est_max_freq, closest_note))
+                main_freq, closest_note = find_main_freq(freqs)
+                #print('{:.2f} Hz ({})'.format(main_freq, closest_note))
 
                 # Step 9: plot things
 
@@ -441,9 +441,9 @@ def main():
 
                 # find the closest string to the note we've identified
                 # (closest_note)
-                closest_string = find_closest_string(relevant_str_base_logfreqs, est_max_freq)
+                closest_string = find_closest_string(relevant_str_base_logfreqs, main_freq)
                 # find the frequency that the string should be
-                target_freq = find_target_freq(est_max_freq, closest_string)
+                target_freq = find_target_freq(main_freq, closest_string)
 
                 # compute the sideband energies
                 sb_energies = sideband_energies(selected,
@@ -478,7 +478,7 @@ def main():
                          'Closest Note: {}\n'
                          'String: {}\n'
                          'RMS Power: {:.1f}'.format(
-                             est_max_freq, closest_note, closest_string, rms_power))
+                             main_freq, closest_note, closest_string, rms_power))
                 color = 'g'
                 for (rms_color, rms_min, _rms_max) in RMS_RANGES:
                     if rms_min <= rms_power:
