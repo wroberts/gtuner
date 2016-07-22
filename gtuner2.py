@@ -332,16 +332,18 @@ def find_main_freq(freqs):
     closest_note = find_closest_note(est_max_freq)
     return est_max_freq, closest_note
 
-def find_target_freq(main_freq, closest_string):
+def find_target_freq(relevant_str_base_logfreqs, main_freq):
     '''
     Given that we think we're tuning `closest_string`, what frequency
     should we be aiming for?
 
     Arguments:
     - `main_freq`: the main frequency identified in the recorded sound
-    - `closest_string`: the name of a string (like 'A', or 'D#'); a
-      note without an octave
     '''
+    # find the closest string to the note we've identified
+    # (closest_note)
+    closest_string = find_closest_string(relevant_str_base_logfreqs, main_freq)
+    # use this to find the target frequency
     logfreq_main_freq = numpy.log2(main_freq)
     logfreq_std_string = numpy.log2(find_freq('{}4'.format(closest_string)))
     target_freq = numpy.exp2(logfreq_std_string -
@@ -352,6 +354,9 @@ def find_closest_string(relevant_str_base_logfreqs, main_freq):
     '''
     Find the closest string to the note we've identified
     (closest_note).
+
+    Returns the name of a string (like 'A', or 'D#'); a note without
+    an octave.
 
     Arguments:
     - `relevant_str_base_logfreqs`:
@@ -439,11 +444,8 @@ def main():
                 # calculate the current sound power
                 rms_power = numpy.sqrt((freqs ** 2).mean())
 
-                # find the closest string to the note we've identified
-                # (closest_note)
-                closest_string = find_closest_string(relevant_str_base_logfreqs, main_freq)
                 # find the frequency that the string should be
-                target_freq = find_target_freq(main_freq, closest_string)
+                target_freq = find_target_freq(relevant_str_base_logfreqs, main_freq)
 
                 # compute the sideband energies
                 sb_energies = sideband_energies(selected,
