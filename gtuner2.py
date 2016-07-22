@@ -35,32 +35,33 @@ import pyaudio
 
 def pairwise(iterable):
     "s -> (s0,s1), (s1,s2), (s2, s3), ..."
-    a, b = itertools.tee(iterable)
-    next(b, None)
-    return itertools.izip(a, b)
+    it1, it2 = itertools.tee(iterable)
+    next(it2, None)
+    return itertools.izip(it1, it2)
 
-def parabolic(f, x):
-    """Quadratic interpolation for estimating the true position of an
+def parabolic(vec, argmax):
+    '''
+    Quadratic interpolation for estimating the true position of an
     inter-sample maximum when nearby samples are known.
 
-    f is a vector and x is an index for that vector.
+    vec is a vector and argmax is an index for that vector.
 
-    Returns (vx, vy), the coordinates of the vertex of a parabola that goes
-    through point x and its two neighbors.
+    Returns (vertx, verty), the coordinates of the vertex of a
+    parabola that goes through point argmax and its two neighbors.
 
     Example:
-    Defining a vector f with a local maximum at index 3 (= 6), find local
+    Defining a vector vec with a local maximum at index 3 (= 6), find local
     maximum if points 2, 3, and 4 actually defined a parabola.
 
-    In [3]: f = [2, 3, 1, 6, 4, 2, 3, 1]
+    In [3]: vec = [2, 3, 1, 6, 4, 2, 3, 1]
 
-    In [4]: parabolic(f, argmax(f))
+    In [4]: parabolic(vec, argmax(vec))
     Out[4]: (3.2142857142857144, 6.1607142857142856)
-
-    """
-    xv = 1/2. * (f[x-1] - f[x+1]) / (f[x-1] - 2 * f[x] + f[x+1]) + x
-    yv = f[x] - 1/4. * (f[x-1] - f[x+1]) * (xv - x)
-    return (xv, yv)
+    '''
+    vertx = 1/2. * (vec[argmax-1] - vec[argmax+1]) / (vec[argmax-1] - 2 * vec[argmax] +
+                                                      vec[argmax+1]) + argmax
+    verty = vec[argmax] - 1/4. * (vec[argmax-1] - vec[argmax+1]) * (vertx - argmax)
+    return (vertx, verty)
 
 def build_harmonic_matrix(num_freqs, num_harmonics):
     '''
@@ -266,8 +267,25 @@ RMS_RANGES = (('g', 0, 1.0),
 NUM_SIDEBANDS = 9
 
 def sideband_energies(samples, target_freq, log_sideband_width, num_sidebands, num_harmonics):
-    sideband_logfreqs = log_sideband_width * numpy.arange(1, 1 + num_sidebands) / float(num_sidebands)
-    lower_sidebands = numpy.exp2(numpy.log2(target_freq) - numpy.array(list(reversed(sideband_logfreqs))))
+    '''
+    Compute the Fourier response in `samples` along the `target_freq`
+    and a number of "sidebands" alongside it.
+
+    Arguments:
+    - `samples`: a vector of length MIN_TAPE_LENGTH
+    - `target_freq`: a frequency in Hertz
+    - `log_sideband_width`: the distance (in log-frequency space) to
+      the furthest sideband
+    - `num_sidebands`: the number of sidebands on either side of
+      `target_freq` (e.g., `num_sidebands` = 4 gives a total of 9
+      sidebands)
+    - `num_harmonics`: the number of harmonics above the fundamental
+      to add on to each Fourier series
+    '''
+    sideband_logfreqs = (log_sideband_width * numpy.arange(1, 1 + num_sidebands) /
+                         float(num_sidebands))
+    lower_sidebands = (numpy.exp2(numpy.log2(target_freq) -
+                                  numpy.array(list(reversed(sideband_logfreqs)))))
     upper_sidebands = numpy.exp2(numpy.log2(target_freq) + sideband_logfreqs)
     sidebands = numpy.concatenate((lower_sidebands, [target_freq], upper_sidebands))
     # compute the fourier series for each of the sidebands
@@ -275,10 +293,14 @@ def sideband_energies(samples, target_freq, log_sideband_width, num_sidebands, n
     if num_harmonics < 0:
         num_harmonics = 0
     for harm in range(2, 2 + num_harmonics):
-        fourier += numpy.exp(numpy.outer(sidebands * harm, TAPE_COORDINATES) * -2j * numpy.pi / SAMPLE_RATE)
+        fourier += numpy.exp(numpy.outer(sidebands * harm, TAPE_COORDINATES) *
+                             -2j * numpy.pi / SAMPLE_RATE)
     return numpy.abs(fourier.dot(samples).real)
 
 def main():
+    '''
+    Main program.  A guitar tuner running inside matplotlib.
+    '''
 
     # Step 1: program set up: open audio device, set up variables,
     # etc.
@@ -367,14 +389,17 @@ def main():
                 # numpy.log2(find_freq('C4')) = 8.03
                 # numpy.log2(find_freq('C5')) = 9.03
                 # numpy.log2(est_max_freq) = 10.001
-                rel_str_freq = (numpy.log2(est_max_freq) - numpy.log2(find_freq('C4'))) % 1 + numpy.log2(find_freq('C4'))
-                closest_string = min([((rel_str_freq-y)**2, x) for (x, y) in relevant_str_base_logfreqs])[1]
+                rel_str_freq = ((numpy.log2(est_max_freq) - numpy.log2(find_freq('C4'))) % 1 +
+                                numpy.log2(find_freq('C4')))
+                closest_string = min([((rel_str_freq-y)**2, x) for (x, y) in
+                                      relevant_str_base_logfreqs])[1]
 
                 # given that we think we're tuning `closest_string`,
                 # what frequency should we be aiming for?
-                target_freq = numpy.exp2(numpy.log2(find_freq('{}4'.format(closest_string))) -
-                                         numpy.round(numpy.log2(find_freq('{}4'.format(closest_string))) -
-                                                     numpy.log2(est_max_freq)))
+                target_freq = numpy.exp2(
+                    numpy.log2(find_freq('{}4'.format(closest_string))) -
+                    numpy.round(numpy.log2(find_freq('{}4'.format(closest_string))) -
+                                numpy.log2(est_max_freq)))
 
                 # compute the sideband energies
                 sb_energies = sideband_energies(selected,
