@@ -297,6 +297,22 @@ def sideband_energies(samples, target_freq, log_sideband_width, num_sidebands, n
                              -2j * numpy.pi / SAMPLE_RATE)
     return numpy.abs(fourier.dot(samples).real)
 
+def find_target_freq(main_freq, closest_string):
+    '''
+    Given that we think we're tuning `closest_string`, what frequency
+    should we be aiming for?
+
+    Arguments:
+    - `main_freq`: the main frequency identified in the recorded sound
+    - `closest_string`: the name of a string (like 'A', or 'D#'); a
+      note without an octave
+    '''
+    logfreq_main_freq = numpy.log2(main_freq)
+    logfreq_std_string = numpy.log2(find_freq('{}4'.format(closest_string)))
+    target_freq = numpy.exp2(logfreq_std_string -
+                             numpy.round(logfreq_std_string - logfreq_main_freq))
+    return target_freq
+
 def main():
     '''
     Main program.  A guitar tuner running inside matplotlib.
@@ -394,12 +410,7 @@ def main():
                 closest_string = min([((rel_str_freq-y)**2, x) for (x, y) in
                                       relevant_str_base_logfreqs])[1]
 
-                # given that we think we're tuning `closest_string`,
-                # what frequency should we be aiming for?
-                target_freq = numpy.exp2(
-                    numpy.log2(find_freq('{}4'.format(closest_string))) -
-                    numpy.round(numpy.log2(find_freq('{}4'.format(closest_string))) -
-                                numpy.log2(est_max_freq)))
+                target_freq = find_target_freq(est_max_freq, closest_string)
 
                 # compute the sideband energies
                 sb_energies = sideband_energies(selected,
