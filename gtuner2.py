@@ -304,6 +304,7 @@ def main():
                                                   rel_logfreqs,
                                                   rel_logfreqs + 1))))
     plt.ion()
+    plt.gcf().canvas.set_window_title('Guitar Tuner')
 
     # Step 2: loop
 
@@ -386,9 +387,8 @@ def main():
                 plt.clf()
                 # sideband energies
                 plt.subplot(311)
-                plt.axis('off')
-                #plt.get_xaxis().set_ticks([]) # remove x ticks
-                #plt.get_yaxis().set_ticks([]) # remove y ticks
+                plt.gca().xaxis.set_ticks([]) # remove x ticks
+                plt.gca().yaxis.set_ticks([]) # remove y ticks
                 bars = plt.bar(left=numpy.arange(NUM_SIDEBANDS)+0.05,
                                height=sb_energies,
                                width=.9,
@@ -419,7 +419,7 @@ def main():
                 # Frequency spectrum
                 plt.subplot(313)
                 plt.plot(FREQ_PLOT_XLABELS, numpy.log(freqs[:NUM_PLOTTED_FREQS]))
-                plt.ylabel('Power')
+                plt.ylabel('Power (dB)')
                 plt.xlabel('Frequency (Hz)')
                 plt.draw()
                 plt.pause(0.01)
@@ -436,3 +436,6 @@ def main():
 
     stream.close()
     audio.terminate()
+
+if __name__ == '__main__':
+    main()
