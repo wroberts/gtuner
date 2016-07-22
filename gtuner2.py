@@ -297,6 +297,19 @@ def sideband_energies(samples, target_freq, log_sideband_width, num_sidebands, n
                              -2j * numpy.pi / SAMPLE_RATE)
     return numpy.abs(fourier.dot(samples).real)
 
+def find_main_freq(freqs):
+    '''
+    Identifies the main frequency from the vector of frequencies `freqs`.
+
+    Arguments:
+    - `freqs`:
+    '''
+    max_freq_idx = numpy.argmax(abs(freqs))
+    est_max_freq_idx = parabolic(abs(freqs), max_freq_idx)[0]
+    est_max_freq = SAMPLE_RATE * est_max_freq_idx / MIN_TAPE_LENGTH
+    closest_note = find_closest_note(est_max_freq)
+    return est_max_freq, closest_note
+
 def find_target_freq(main_freq, closest_string):
     '''
     Given that we think we're tuning `closest_string`, what frequency
@@ -407,10 +420,7 @@ def main():
 
                 # Step 8: find the maximum frequency
 
-                max_freq_idx = numpy.argmax(abs(freqs))
-                est_max_freq_idx = parabolic(abs(freqs), max_freq_idx)[0]
-                est_max_freq = SAMPLE_RATE * est_max_freq_idx / MIN_TAPE_LENGTH
-                closest_note = find_closest_note(est_max_freq)
+                est_max_freq, closest_note = find_main_freq(freqs)
                 #print('{:.2f} Hz ({})'.format(est_max_freq, closest_note))
 
                 # Step 9: plot things
