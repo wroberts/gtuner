@@ -332,24 +332,6 @@ def find_main_freq(freqs):
     closest_note = find_closest_note(est_max_freq)
     return est_max_freq, closest_note
 
-def find_target_freq(relevant_str_base_logfreqs, main_freq):
-    '''
-    Given that we think we're tuning `closest_string`, what frequency
-    should we be aiming for?
-
-    Arguments:
-    - `main_freq`: the main frequency identified in the recorded sound
-    '''
-    # find the closest string to the note we've identified
-    # (closest_note)
-    closest_string = find_closest_string(relevant_str_base_logfreqs, main_freq)
-    # use this to find the target frequency
-    logfreq_main_freq = numpy.log2(main_freq)
-    logfreq_std_string = numpy.log2(find_freq('{}4'.format(closest_string)))
-    target_freq = numpy.exp2(logfreq_std_string -
-                             numpy.round(logfreq_std_string - logfreq_main_freq))
-    return target_freq
-
 def find_closest_string(relevant_str_base_logfreqs, main_freq):
     '''
     Find the closest string to the note we've identified
@@ -372,6 +354,24 @@ def find_closest_string(relevant_str_base_logfreqs, main_freq):
     closest_string = min([((rel_str_freq - y) ** 2, x) for (x, y) in
                           relevant_str_base_logfreqs])[1]
     return closest_string
+
+def find_target_freq(relevant_str_base_logfreqs, main_freq):
+    '''
+    Given that we think we're tuning `closest_string`, what frequency
+    should we be aiming for?
+
+    Arguments:
+    - `main_freq`: the main frequency identified in the recorded sound
+    '''
+    # find the closest string to the note we've identified
+    # (closest_note)
+    closest_string = find_closest_string(relevant_str_base_logfreqs, main_freq)
+    # use this to find the target frequency
+    logfreq_main_freq = numpy.log2(main_freq)
+    logfreq_std_string = numpy.log2(find_freq('{}4'.format(closest_string)))
+    target_freq = numpy.exp2(logfreq_std_string -
+                             numpy.round(logfreq_std_string - logfreq_main_freq))
+    return target_freq
 
 def main():
     '''
