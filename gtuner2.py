@@ -19,6 +19,26 @@ Other resources used:
 
 https://arxiv.org/pdf/0912.0745.pdf
 http://blog.bjornroche.com/2012/07/frequency-detection-using-fft-aka-pitch.html
+http://dsp.stackexchange.com/questions/1317/is-there-an-algorithm-for-finding-a-frequency-without-dft-or-fft
+
+Other implementations:
+
+https://www.snip2code.com/Snippet/36379/PyTuner---Small-Python-Command-Line-Tune
+- contains low-pass FIR filter
+
+Future reading (autocorrelation):
+
+http://stackoverflow.com/a/5045834/1062499
+http://recherche.ircam.fr/equipes/pcm/cheveign/pss/2002_JASA_YIN.pdf
+http://fivedots.coe.psu.ac.th/~montri/Research/Publications/iscit2003_pda.pdf
+
+Further reading (phase-locked loops):
+
+http://arachnoid.com/phase_locked_loop/
+
+Other software:
+
+http://www.nongnu.org/lingot/
 '''
 
 import itertools
