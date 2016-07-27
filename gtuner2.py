@@ -43,6 +43,7 @@ http://www.nongnu.org/lingot/
 
 import itertools
 import re
+import sys
 import time
 import matplotlib.pyplot as plt
 import numpy
@@ -281,13 +282,13 @@ FREQ_PLOT_XLABELS = numpy.arange(NUM_PLOTTED_FREQS) * FREQ_RESOLUTION
 
 # these are hand-calibrated values for determining what is "loud" to
 # my microphone
-RMS_RANGES = (('g', 0, 1.0),
-              ('y', 1.0, 10.),
-              ('r', 10., 20.))
+RMS_RANGES = (('g', sys.float_info.min, 0.0),
+              ('y', 0.0, 2.3025850929940459),
+              ('r', 2.3025850929940459, 2.9957322735539909))
 
 NUM_SIDEBANDS = 9
 
-def sideband_energies(samples, target_freq, log_sideband_width, num_sidebands, num_harmonics):
+def sideband_energies(samples, target_freq, sideband_width_loghz, num_sidebands, num_harmonics):
     '''
     Compute the Fourier response in `samples` along the `target_freq`
     and a number of "sidebands" alongside it.
@@ -295,15 +296,15 @@ def sideband_energies(samples, target_freq, log_sideband_width, num_sidebands, n
     Arguments:
     - `samples`: a vector of length MIN_TAPE_LENGTH
     - `target_freq`: a frequency in Hertz
-    - `log_sideband_width`: the distance (in log-frequency space) to
-      the furthest sideband
+    - `sideband_width_loghz`: the total width (given in log Hz) of all
+      the sidebands
     - `num_sidebands`: the total number of sidebands
     - `num_harmonics`: the number of harmonics above the fundamental
       to add on to each Fourier series
     '''
     log_target_freq = numpy.log2(target_freq)
-    sidebands = numpy.logspace(log_target_freq - log_sideband_width,
-                               log_target_freq + log_sideband_width,
+    sidebands = numpy.logspace(log_target_freq - sideband_width_loghz / 2,
+                               log_target_freq + sideband_width_loghz / 2,
                                num_sidebands,
                                base=2.)
     # compute the fourier series for each of the sidebands
@@ -324,18 +325,18 @@ def compute_tuning_vars(tuning):
     - `tuning`:
     '''
     relevant_strings = set([interpret_note(x)[0] for x in tuning])
-    # frequencies of the strings we're using in our
+    # log frequencies of the strings we're using in our
     # tuning, all on octave 4
-    relevant_str_base_logfreqs = dict((x, numpy.log2(find_freq('{}4'.format(x))))
-                                      for x in relevant_strings)
+    string_freqs_loghz = dict((x, numpy.log2(find_freq('{}4'.format(x))))
+                              for x in relevant_strings)
     # find the minimum distance between relevant strings in log
     # frequency space
-    rel_logfreqs = numpy.array(sorted(relevant_str_base_logfreqs.values()))
-    min_logdist = min((y - x) % 1 for (x, y) in
-                      itertools.islice(
-                          pairwise(itertools.cycle(rel_logfreqs)),
-                          len(rel_logfreqs)))
-    return min_logdist, relevant_str_base_logfreqs
+    freqs_loghz = numpy.array(sorted(string_freqs_loghz.values()))
+    sideband_width_loghz = min((y - x) % 1 for (x, y) in
+                               itertools.islice(
+                                   pairwise(itertools.cycle(freqs_loghz)),
+                                   len(freqs_loghz)))
+    return sideband_width_loghz, string_freqs_loghz
 
 def find_main_freq(freqs):
     '''
@@ -360,19 +361,20 @@ def find_target_freq(main_freq, closest_string):
     - `closest_string`: the name of a string (like 'A', or 'D#'); a
       note without an octave
     '''
-    logfreq_main_freq = numpy.log2(main_freq)
-    logfreq_std_string = numpy.log2(find_freq('{}4'.format(closest_string)))
-    target_freq = numpy.exp2(logfreq_std_string -
-                             numpy.round(logfreq_std_string - logfreq_main_freq))
+    main_freq_loghz = numpy.log2(main_freq)
+    string4_freq_loghz = numpy.log2(find_freq('{}4'.format(closest_string)))
+    target_freq = numpy.exp2(string4_freq_loghz -
+                             numpy.round(string4_freq_loghz - main_freq_loghz))
     return target_freq
 
-def find_closest_string(relevant_str_base_logfreqs, main_freq):
+def find_closest_string(string_freqs_loghz, main_freq):
     '''
     Find the closest string to the note we've identified
     (closest_note).
 
     Arguments:
-    - `relevant_str_base_logfreqs`:
+    - `string_freqs_loghz`: a dict mapping string names (e.g., 'A')
+      onto frequencies (in log Hz, in octave 4)
     - `main_freq`:
     '''
     # put main_freq into octave 4 (between find_freq('C4') and find_freq('C5'))
@@ -380,14 +382,20 @@ def find_closest_string(relevant_str_base_logfreqs, main_freq):
     # numpy.log2(find_freq('C4')) = 8.03
     # numpy.log2(find_freq('C5')) = 9.03
     # numpy.log2(main_freq) = 10.001
-    logfreq_c4 = numpy.log2(find_freq('C4'))
-    rel_str_freq = (numpy.log2(main_freq) - logfreq_c4) % 1 + logfreq_c4
-    closest_string = min([((rel_str_freq - y) ** 2, x) for (x, y) in
-                          relevant_str_base_logfreqs.items()])[1]
+    c4_loghz = numpy.log2(find_freq('C4'))
+    main_freq_oct4_loghz = (numpy.log2(main_freq) - c4_loghz) % 1 + c4_loghz
+    # collect the strings and log frequencies we're searching (in
+    # order of ascending frequency)
+    search_items = sorted(string_freqs_loghz.items(), key=lambda x: x[1])
+    # wrap around: place the lowest frequency string, one octave up,
+    # at the end of the search list
+    search_items.extend([(x, y + 1) for (x, y) in search_items[:1]])
+    closest_string = min([((main_freq_oct4_loghz - y) ** 2, x) for (x, y) in
+                          search_items])[1]
     return closest_string
 
 def draw_ui(main_freq, closest_note, selected, freqs,
-            relevant_str_base_logfreqs, min_logdist):
+            string_freqs_loghz, sideband_width_loghz):
     '''
     Draw information to the screen.
 
@@ -396,22 +404,23 @@ def draw_ui(main_freq, closest_note, selected, freqs,
     - `closest_note`:
     - `selected`:
     - `freqs`:
-    - `relevant_str_base_logfreqs`:
-    - `min_logdist`:
+    - `string_freqs_loghz`:
+    - `sideband_width_loghz`: the total width of the sideband
+      frequency space, in log Hz
     '''
     # calculate the current sound power
-    rms_power = numpy.sqrt((freqs ** 2).mean())
+    rms_power = numpy.log(numpy.sqrt((freqs ** 2).mean()))
 
     # find the closest string to the note we've identified
     # (closest_note)
-    closest_string = find_closest_string(relevant_str_base_logfreqs, main_freq)
+    closest_string = find_closest_string(string_freqs_loghz, main_freq)
     # find the frequency that the string should be
     target_freq = find_target_freq(main_freq, closest_string)
 
     # compute the sideband energies
     sb_energies = sideband_energies(selected,
                                     target_freq,
-                                    min_logdist / 2,
+                                    sideband_width_loghz,
                                     NUM_SIDEBANDS,
                                     NUM_HARMONICS)
     sb_bestidx = numpy.argmax(sb_energies)
@@ -472,7 +481,7 @@ def main():
                         frames_per_buffer = CHUNK)
     tape = numpy.array([], dtype=numpy.float32)
     last_update_time = time.time()
-    min_logdist, relevant_str_base_logfreqs = compute_tuning_vars(STANDARD_TUNING)
+    sideband_width_loghz, string_freqs_loghz = compute_tuning_vars(STANDARD_TUNING)
     # low-pass filter with frequency cutoff of 1.5 kHz
     lopass_filter = scipy.signal.firwin(1001, 1500. / (0.5 * SAMPLE_RATE), window='hamming')
     plt.ion()
@@ -530,7 +539,7 @@ def main():
                 # Step 9: plot things
 
                 draw_ui(main_freq, closest_note, selected, freqs,
-                        relevant_str_base_logfreqs, min_logdist)
+                        string_freqs_loghz, sideband_width_loghz)
 
                 # Step 10: shorten the tape if needed
 
