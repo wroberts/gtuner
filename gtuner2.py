@@ -326,11 +326,11 @@ def compute_tuning_vars(tuning):
     relevant_strings = set([interpret_note(x)[0] for x in tuning])
     # frequencies of the strings we're using in our
     # tuning, all on octave 4
-    relevant_str_base_logfreqs = [(x, numpy.log2(find_freq('{}4'.format(x))))
-                                  for x in relevant_strings]
+    relevant_str_base_logfreqs = dict((x, numpy.log2(find_freq('{}4'.format(x))))
+                                      for x in relevant_strings)
     # find the minimum distance between relevant strings in log
     # frequency space
-    rel_logfreqs = numpy.array(sorted([x[1] for x in relevant_str_base_logfreqs]))
+    rel_logfreqs = numpy.array(sorted(relevant_str_base_logfreqs.values()))
     min_logdist = min((y - x) % 1 for (x, y) in
                       itertools.islice(
                           pairwise(itertools.cycle(rel_logfreqs)),
@@ -383,7 +383,7 @@ def find_closest_string(relevant_str_base_logfreqs, main_freq):
     logfreq_c4 = numpy.log2(find_freq('C4'))
     rel_str_freq = (numpy.log2(main_freq) - logfreq_c4) % 1 + logfreq_c4
     closest_string = min([((rel_str_freq - y) ** 2, x) for (x, y) in
-                          relevant_str_base_logfreqs])[1]
+                          relevant_str_base_logfreqs.items()])[1]
     return closest_string
 
 def draw_ui(main_freq, closest_note, selected, freqs,
