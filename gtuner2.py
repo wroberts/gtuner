@@ -316,6 +316,23 @@ def sideband_energies(samples, target_freq, sideband_width_loghz, num_sidebands,
                              -2j * numpy.pi / SAMPLE_RATE)
     return numpy.abs(fourier.dot(samples).real)
 
+def mod_least_diff(diff):
+    '''
+    A function that finds the "smallest amount" that a difference can
+    be, defined on the real numbers with modular arithmetic, modulo 1.
+
+    We use this ring to work out closest strings, notes, etc. in
+    log-frequency space.  Distances of 1 correspond to a jump of an
+    octave, which is quite often useless information.
+
+    In other words, for any given x, y, one can compute either
+    `(x - y) % 1`
+    or
+    `(y - x) % 1`;
+    this function helps with finding the smallest value of both of these.
+    '''
+    return 1. - diff if numpy.abs(diff) > 0.5 else diff
+
 def compute_tuning_vars(tuning):
     '''
     Computes several variables relevant to fixing the tuning of a
@@ -331,11 +348,8 @@ def compute_tuning_vars(tuning):
                               for x in relevant_strings)
     # find the minimum distance between relevant strings in log
     # frequency space
-    freqs_loghz = numpy.array(sorted(string_freqs_loghz.values()))
-    sideband_width_loghz = min((y - x) % 1 for (x, y) in
-                               itertools.islice(
-                                   pairwise(itertools.cycle(freqs_loghz)),
-                                   len(freqs_loghz)))
+    sideband_width_loghz = min([abs(mod_least_diff((y - x) % 1)) for (x, y) in
+                                itertools.combinations(string_freqs_loghz.values(), 2)])
     return sideband_width_loghz, string_freqs_loghz
 
 def find_main_freq(freqs):
@@ -379,12 +393,8 @@ def find_closest_string(string_freqs_loghz, main_freq):
     '''
     # we work in log space
     main_freq_loghz = numpy.log2(main_freq)
-    # i need a function that finds the "smallest distance" that a
-    # difference can be; that is, for any given x, y, I can compute either
-    # (x - y) % 1 or (y - x) % 1; I want the smallest value here.
-    smallest_dist = lambda x: 1. - x if numpy.abs(x) > 0.5 else x
     # now find the closest string
-    closest_string = min([(smallest_dist((main_freq_loghz - y) % 1) ** 2, x)
+    closest_string = min([(mod_least_diff((main_freq_loghz - y) % 1) ** 2, x)
                           for (x, y) in string_freqs_loghz.items()])[1]
     return closest_string
 
