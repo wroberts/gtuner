@@ -297,18 +297,15 @@ def sideband_energies(samples, target_freq, log_sideband_width, num_sidebands, n
     - `target_freq`: a frequency in Hertz
     - `log_sideband_width`: the distance (in log-frequency space) to
       the furthest sideband
-    - `num_sidebands`: the number of sidebands on either side of
-      `target_freq` (e.g., `num_sidebands` = 4 gives a total of 9
-      sidebands)
+    - `num_sidebands`: the total number of sidebands
     - `num_harmonics`: the number of harmonics above the fundamental
       to add on to each Fourier series
     '''
-    sideband_logfreqs = (log_sideband_width * numpy.arange(1, 1 + num_sidebands) /
-                         float(num_sidebands))
-    lower_sidebands = (numpy.exp2(numpy.log2(target_freq) -
-                                  numpy.array(list(reversed(sideband_logfreqs)))))
-    upper_sidebands = numpy.exp2(numpy.log2(target_freq) + sideband_logfreqs)
-    sidebands = numpy.concatenate((lower_sidebands, [target_freq], upper_sidebands))
+    log_target_freq = numpy.log2(target_freq)
+    sidebands = numpy.logspace(log_target_freq - log_sideband_width,
+                               log_target_freq + log_sideband_width,
+                               num_sidebands,
+                               base=2.)
     # compute the fourier series for each of the sidebands
     fourier = numpy.exp(numpy.outer(sidebands, TAPE_COORDINATES) * -2j * numpy.pi / SAMPLE_RATE)
     if num_harmonics < 0:
@@ -415,7 +412,7 @@ def draw_ui(main_freq, closest_note, selected, freqs,
     sb_energies = sideband_energies(selected,
                                     target_freq,
                                     min_logdist / 2,
-                                    (NUM_SIDEBANDS - 1) // 2,
+                                    NUM_SIDEBANDS,
                                     NUM_HARMONICS)
     sb_bestidx = numpy.argmax(sb_energies)
 
