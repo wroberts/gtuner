@@ -321,7 +321,7 @@ def mod_least_diff(diff):
     A function that finds the "smallest amount" that a difference can
     be, defined on the real numbers with modular arithmetic, modulo 1.
 
-    We use this ring to work out closest strings, notes, etc. in
+    We use this group to work out closest strings, notes, etc. in
     log-frequency space.  Distances of 1 correspond to a jump of an
     octave, which is quite often useless information.
 
@@ -330,6 +330,8 @@ def mod_least_diff(diff):
     or
     `(y - x) % 1`;
     this function helps with finding the smallest value of both of these.
+
+    http://math.stackexchange.com/q/55297
     '''
     return 1. - diff if numpy.abs(diff) > 0.5 else diff
 
