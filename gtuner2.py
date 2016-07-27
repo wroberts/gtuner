@@ -388,6 +388,76 @@ def find_closest_string(relevant_str_base_logfreqs, main_freq):
                           relevant_str_base_logfreqs])[1]
     return closest_string
 
+def draw_ui(main_freq, closest_note, selected, freqs,
+            relevant_str_base_logfreqs, min_logdist):
+    '''
+    Draw information to the screen.
+
+    Arguments:
+    - `main_freq`:
+    - `closest_note`:
+    - `selected`:
+    - `freqs`:
+    - `relevant_str_base_logfreqs`:
+    - `min_logdist`:
+    '''
+    # calculate the current sound power
+    rms_power = numpy.sqrt((freqs ** 2).mean())
+
+    # find the closest string to the note we've identified
+    # (closest_note)
+    closest_string = find_closest_string(relevant_str_base_logfreqs, main_freq)
+    # find the frequency that the string should be
+    target_freq = find_target_freq(main_freq, closest_string)
+
+    # compute the sideband energies
+    sb_energies = sideband_energies(selected,
+                                    target_freq,
+                                    min_logdist / 2,
+                                    (NUM_SIDEBANDS - 1) // 2,
+                                    NUM_HARMONICS)
+    sb_bestidx = numpy.argmax(sb_energies)
+
+    plt.clf()
+    # sideband energies
+    plt.subplot(311)
+    plt.gca().xaxis.set_ticks([]) # remove x ticks
+    plt.gca().yaxis.set_ticks([]) # remove y ticks
+    bars = plt.bar(left=numpy.arange(NUM_SIDEBANDS)+0.05,
+                   height=sb_energies,
+                   width=.9,
+                   color='k')
+    # color the most powerful narrowband specially
+    if sb_bestidx == (NUM_SIDEBANDS - 1) // 2:
+        bars[sb_bestidx].set_facecolor('g')
+    else:
+        bars[sb_bestidx].set_facecolor('r')
+
+    # Text and RMS power
+    plt.subplot(312)
+    plt.axis('off')
+    plt.xlim(xmin=0, xmax=RMS_RANGES[-1][-1])
+    plt.ylim(ymin=0, ymax=1)
+    plt.text(0.5, 0.5,
+             'Main Freq: {:.1f} Hz\n'
+             'Closest Note: {}\n'
+             'String: {}\n'
+             'RMS Power: {:.1f}'.format(
+                 main_freq, closest_note, closest_string, rms_power))
+    color = 'g'
+    for (rms_color, rms_min, _rms_max) in RMS_RANGES:
+        if rms_min <= rms_power:
+            color = rms_color
+    plt.barh(bottom=0.2, height=0.2, width=rms_power, color=color)
+
+    # Frequency spectrum
+    plt.subplot(313)
+    plt.plot(FREQ_PLOT_XLABELS, numpy.log(freqs[:NUM_PLOTTED_FREQS]))
+    plt.ylabel('Power (dB)')
+    plt.xlabel('Frequency (Hz)')
+    plt.draw()
+    plt.pause(0.01)
+
 def main():
     '''
     Main program.  A guitar tuner running inside matplotlib.
@@ -456,62 +526,8 @@ def main():
 
                 # Step 9: plot things
 
-                # calculate the current sound power
-                rms_power = numpy.sqrt((freqs ** 2).mean())
-
-                # find the closest string to the note we've identified
-                # (closest_note)
-                closest_string = find_closest_string(relevant_str_base_logfreqs, main_freq)
-                # find the frequency that the string should be
-                target_freq = find_target_freq(main_freq, closest_string)
-
-                # compute the sideband energies
-                sb_energies = sideband_energies(selected,
-                                                target_freq,
-                                                min_logdist / 2,
-                                                (NUM_SIDEBANDS - 1) // 2,
-                                                NUM_HARMONICS)
-                sb_bestidx = numpy.argmax(sb_energies)
-
-                plt.clf()
-                # sideband energies
-                plt.subplot(311)
-                plt.gca().xaxis.set_ticks([]) # remove x ticks
-                plt.gca().yaxis.set_ticks([]) # remove y ticks
-                bars = plt.bar(left=numpy.arange(NUM_SIDEBANDS)+0.05,
-                               height=sb_energies,
-                               width=.9,
-                               color='k')
-                # color the most powerful narrowband specially
-                if sb_bestidx == (NUM_SIDEBANDS - 1) // 2:
-                    bars[sb_bestidx].set_facecolor('g')
-                else:
-                    bars[sb_bestidx].set_facecolor('r')
-
-                # Text and RMS power
-                plt.subplot(312)
-                plt.axis('off')
-                plt.xlim(xmin=0, xmax=RMS_RANGES[-1][-1])
-                plt.ylim(ymin=0, ymax=1)
-                plt.text(0.5, 0.5,
-                         'Main Freq: {:.1f} Hz\n'
-                         'Closest Note: {}\n'
-                         'String: {}\n'
-                         'RMS Power: {:.1f}'.format(
-                             main_freq, closest_note, closest_string, rms_power))
-                color = 'g'
-                for (rms_color, rms_min, _rms_max) in RMS_RANGES:
-                    if rms_min <= rms_power:
-                        color = rms_color
-                plt.barh(bottom=0.2, height=0.2, width=rms_power, color=color)
-
-                # Frequency spectrum
-                plt.subplot(313)
-                plt.plot(FREQ_PLOT_XLABELS, numpy.log(freqs[:NUM_PLOTTED_FREQS]))
-                plt.ylabel('Power (dB)')
-                plt.xlabel('Frequency (Hz)')
-                plt.draw()
-                plt.pause(0.01)
+                draw_ui(main_freq, closest_note, selected, freqs,
+                        relevant_str_base_logfreqs, min_logdist)
 
                 # Step 10: shorten the tape if needed
 
