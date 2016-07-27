@@ -377,21 +377,15 @@ def find_closest_string(string_freqs_loghz, main_freq):
       onto frequencies (in log Hz, in octave 4)
     - `main_freq`:
     '''
-    # put main_freq into octave 4 (between find_freq('C4') and find_freq('C5'))
     # we work in log space
-    # numpy.log2(find_freq('C4')) = 8.03
-    # numpy.log2(find_freq('C5')) = 9.03
-    # numpy.log2(main_freq) = 10.001
-    c4_loghz = numpy.log2(find_freq('C4'))
-    main_freq_oct4_loghz = (numpy.log2(main_freq) - c4_loghz) % 1 + c4_loghz
-    # collect the strings and log frequencies we're searching (in
-    # order of ascending frequency)
-    search_items = sorted(string_freqs_loghz.items(), key=lambda x: x[1])
-    # wrap around: place the lowest frequency string, one octave up,
-    # at the end of the search list
-    search_items.extend([(x, y + 1) for (x, y) in search_items[:1]])
-    closest_string = min([((main_freq_oct4_loghz - y) ** 2, x) for (x, y) in
-                          search_items])[1]
+    main_freq_loghz = numpy.log2(main_freq)
+    # i need a function that finds the "smallest distance" that a
+    # difference can be; that is, for any given x, y, I can compute either
+    # (x - y) % 1 or (y - x) % 1; I want the smallest value here.
+    smallest_dist = lambda x: 1. - x if numpy.abs(x) > 0.5 else x
+    # now find the closest string
+    closest_string = min([(smallest_dist((main_freq_loghz - y) % 1) ** 2, x)
+                          for (x, y) in string_freqs_loghz.items()])[1]
     return closest_string
 
 def draw_ui(main_freq, closest_note, selected, freqs,
