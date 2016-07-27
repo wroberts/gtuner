@@ -47,6 +47,7 @@ import time
 import matplotlib.pyplot as plt
 import numpy
 import pyaudio
+import scipy.signal
 
 
 # ============================================================
@@ -475,6 +476,8 @@ def main():
     tape = numpy.array([], dtype=numpy.float32)
     last_update_time = time.time()
     min_logdist, relevant_str_base_logfreqs = compute_tuning_vars(STANDARD_TUNING)
+    # low-pass filter with frequency cutoff of 1.5 kHz
+    lopass_filter = scipy.signal.firwin(1001, 1500. / (0.5 * SAMPLE_RATE), window='hamming')
     plt.ion()
     plt.gcf().canvas.set_window_title('Guitar Tuner')
 
@@ -508,6 +511,9 @@ def main():
                 # Step 5: select the last two seconds of data and window it
 
                 selected = tape[-MIN_TAPE_LENGTH:] * HAMMING_WINDOW
+
+                # Step 5a: low-pass filter up to 329.60 x 4 = 1318.4 Hz
+                selected = scipy.signal.lfilter(lopass_filter, 1, selected)
 
                 # Step 6: take the FFT
 
