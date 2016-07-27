@@ -331,10 +331,10 @@ def compute_tuning_vars(tuning):
     # find the minimum distance between relevant strings in log
     # frequency space
     rel_logfreqs = numpy.array(sorted([x[1] for x in relevant_str_base_logfreqs]))
-    min_logdist = min((y-x) for (x,y) in
-                      pairwise(numpy.concatenate((rel_logfreqs - 1,
-                                                  rel_logfreqs,
-                                                  rel_logfreqs + 1))))
+    min_logdist = min((y - x) % 1 for (x, y) in
+                      itertools.islice(
+                          pairwise(itertools.cycle(rel_logfreqs)),
+                          len(rel_logfreqs)))
     return min_logdist, relevant_str_base_logfreqs
 
 def find_main_freq(freqs):
